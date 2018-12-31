@@ -8,8 +8,7 @@ defmodule Showtimes.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      # Starts a worker by calling: Showtimes.Worker.start_link(arg)
-      # {Showtimes.Worker, arg},
+      Showtimes.Data,
       Plug.Cowboy.child_spec(
         scheme: :http,
         plug: Showtimes.WebServer,
@@ -17,8 +16,6 @@ defmodule Showtimes.Application do
       )
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Showtimes.Supervisor]
     Supervisor.start_link(children, opts)
   end
