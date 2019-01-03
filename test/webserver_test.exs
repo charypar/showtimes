@@ -9,6 +9,5 @@ defmodule Showtimes.WebServerTest do
 
     assert conn.state == :sent
     assert conn.status == 200
-    assert conn.resp_body == "Hello!"
   end
 end

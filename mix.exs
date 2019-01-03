@@ -23,6 +23,7 @@ defmodule Showtimes.MixProject do
   defp deps do
     [
       {:plug_cowboy, "~> 2.0"},
+      {:poison, "~> 3.1"},
       {:mix_test_watch, "~> 0.8", only: :dev, runtime: false}
     ]
   end

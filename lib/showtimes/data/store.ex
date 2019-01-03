@@ -20,6 +20,7 @@ defmodule Showtimes.Data.Store do
 
     def init(name) do
       films_table = :ets.new(name, [:named_table, read_concurrency: true])
+      :ets.insert(films_table, {:films, []})
 
       {:ok, films_table}
     end
