@@ -13,19 +13,33 @@ defmodule Showtimes.Data.FetchScheduler do
   end
 
   def init(opts) do
+    {:ok, {_mod, _fun, _args} = task} = Keyword.fetch(opts, :task)
+    {:ok, {_pid, _message} = sub} = Keyword.fetch(opts, :subscribe)
     interval = Keyword.get(opts, :interval, 3000)
 
     timer = schedule(interval)
-    trigger_fetch()
+    trigger_fetch(task)
 
-    {:ok, {timer, interval}}
+    {:ok, {timer, interval, task, sub}}
   end
 
-  def handle_info(:trigger, {previous_timer, interval}) do
+  def handle_info(:trigger, {previous_timer, interval, task, sub}) do
     timer = schedule(previous_timer, interval)
-    trigger_fetch()
+    trigger_fetch(task)
 
-    {:noreply, {timer, interval}}
+    {:noreply, {timer, interval, task, sub}}
+  end
+
+  def handle_info({_ref, data}, {_tm, _i, _ts, {pid, msg}} = state) do
+    # Notify subscriber
+    send(pid, {msg, data})
+
+    {:noreply, state}
+  end
+
+  # ignore Task termination
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
+    {:noreply, state}
   end
 
   defp schedule(timer, interval) do
@@ -37,9 +51,7 @@ defmodule Showtimes.Data.FetchScheduler do
     Process.send_after(self(), :trigger, interval)
   end
 
-  defp trigger_fetch do
-    Task.Supervisor.start_child(Showtimes.Data.TaskSupervisor, Showtimes.Data.Fetch, :fetch, [
-      [timeout: 5000]
-    ])
+  defp trigger_fetch({mod, fun, args}) do
+    Task.Supervisor.async_nolink(Showtimes.Data.TaskSupervisor, mod, fun, args)
   end
 end

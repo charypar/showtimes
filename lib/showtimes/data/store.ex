@@ -11,6 +11,7 @@ defmodule Showtimes.Data.Store do
 
   defmodule Server do
     use GenServer
+    require Logger
 
     def start_link(opts) do
       {:ok, table_name} = Keyword.fetch(opts, :name)
@@ -27,6 +28,12 @@ defmodule Showtimes.Data.Store do
       :ets.insert(films_table, {:films, films})
 
       {:reply, :ok, films_table}
+    end
+
+    def handle_info({:put, films}, films_table) do
+      :ets.insert(films_table, {:films, films})
+
+      {:noreply, films_table}
     end
   end
 end

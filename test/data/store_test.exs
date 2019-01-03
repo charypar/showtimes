@@ -47,7 +47,7 @@ defmodule Showtimes.Data.StoreTest do
 
     assert Store.get(store) == films
 
-    :ok = Store.put(store, new_films)
+    Store.put(store, new_films)
 
     assert Store.get(store) == new_films
   end
