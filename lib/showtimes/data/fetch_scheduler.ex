@@ -15,7 +15,7 @@ defmodule Showtimes.Data.FetchScheduler do
   def init(opts) do
     {:ok, {_mod, _fun, _args} = task} = Keyword.fetch(opts, :task)
     {:ok, {_pid, _message} = sub} = Keyword.fetch(opts, :subscribe)
-    interval = Keyword.get(opts, :interval, 3000)
+    interval = Keyword.get(opts, :interval, 4 * 60 * 60 * 1000)
 
     timer = schedule(interval)
     trigger_fetch(task)

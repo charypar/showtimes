@@ -12,7 +12,7 @@ defmodule Showtimes.Data do
       {
         Showtimes.Data.FetchScheduler,
         name: Showtimes.Data.FetchScheduler,
-        task: {Showtimes.Data.Fetch, :fetch, [[timeout: 5_000]]},
+        task: {Showtimes.Data.Fetch, :fetch, [[]]},
         subscribe: {Showtimes.Data.Store, :put}
       }
     ]

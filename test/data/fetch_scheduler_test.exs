@@ -32,7 +32,7 @@ defmodule Showtimes.Data.FetchSchedulerTest do
 
   test "runs the task and notifies subscriber multiple times" do
     assert_receive({:return, :done}, 13)
-    assert_receive({:return, :done}, 4)
-    assert_receive({:return, :done}, 4)
+    assert_receive({:return, :done}, 5)
+    assert_receive({:return, :done}, 5)
   end
 end
