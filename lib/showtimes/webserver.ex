@@ -39,17 +39,14 @@ defmodule Showtimes.WebServer do
     Enum.map(films, fn {film_id, film} ->
       film_venues =
         venues
-        |> Enum.map(fn {venue_id, venue} ->
+        |> Enum.map(fn {venue_id, v} ->
           ss = showings[{film_id, venue_id}]
+          venue = Map.take(v, ["name", "distance", "lat", "lon", "website"])
 
-          unless ss do
-            nil
+          if ss do
+            Map.put(venue, "times", Enum.map(ss, &Map.take(&1, ["showtime", "ticketing_link"])))
           else
-            Map.put(
-              Map.take(venue, ["name", "distance", "lat", "lon", "website"]),
-              "times",
-              Enum.map(ss, fn s -> Map.take(s, ["showtime", "ticketing_link"]) end)
-            )
+            nil
           end
         end)
         |> Enum.filter(&(&1 && String.to_float(&1["distance"]) <= 10))
