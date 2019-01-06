@@ -39,69 +39,25 @@ defmodule Showtimes.Data.Fetch do
 
     films =
       film_names
-      |> Enum.map(&Task.async(fn -> find_film(&1) end))
-      |> Enum.flat_map(&Task.await(&1, 30_000))
-      |> Enum.uniq_by(fn f -> f["film_id"] end)
+      |> pflat_map(&find_film(&1))
+      |> Enum.uniq_by(& &1["film_id"])
 
     Logger.info("Done. Finding all showings...")
 
-    raw_showings =
-      films
-      |> Enum.map(&Task.async(fn -> find_showings(&1["film_id"], today) end))
-      |> Enum.flat_map(&Task.await(&1, 30_000))
+    raw_showings = films |> pflat_map(&find_showings(&1["film_id"], today))
 
     Logger.info("Aggregating data...")
 
-    [venues, films, showings] =
-      raw_showings
-      |> Enum.reduce(
-        [%{}, %{}, %{}],
-        fn venue, [venues, films, showings] ->
-          v = %{venue | "films" => nil}
-
-          venue_id = v["venue_id"]
-          film_id = hd(Map.keys(venue["films"]))
-
-          f = venue["films"][film_id]["film_data"]
-
-          s =
-            venue["films"][film_id]["showings"]
-            |> Enum.map(&Map.merge(&1, %{"film_id" => film_id, "venue_id" => venue_id}))
-
-          [
-            if(v, do: Map.put(venues, venue_id, v), else: venues),
-            if(f, do: Map.put(films, film_id, f), else: films),
-            Map.put(showings, {film_id, venue_id}, s)
-          ]
-        end
-      )
-
-    result =
-      films
-      |> Enum.map(fn {film_id, film} ->
-        film_venues =
-          venues
-          |> Enum.map(fn {venue_id, venue} ->
-            ss = showings[{film_id, venue_id}]
-
-            unless ss do
-              nil
-            else
-              Map.put(
-                Map.take(venue, ["name", "distance", "lat", "lon", "website"]),
-                "times",
-                Enum.map(ss, fn s -> Map.take(s, ["showtime", "ticketing_link"]) end)
-              )
-            end
-          end)
-          |> Enum.filter(& &1)
-
-        Map.put(film, "venues", film_venues)
-      end)
+    [venues, films, showings] = index_venues_films_showings(raw_showings)
 
     Logger.info("Done.")
+    present_results(venues, films, showings)
+  end
 
-    result
+  defp pflat_map(list, func) do
+    list
+    |> Enum.map(&Task.async(fn -> func.(&1) end))
+    |> Enum.flat_map(&Task.await(&1, 30_000))
   end
 
   defp current_films() do
@@ -140,7 +96,55 @@ defmodule Showtimes.Data.Fetch do
     end
   end
 
-  def http_fetch(uri) do
+  defp index_venues_films_showings(raw_showings) do
+    Enum.reduce(
+      raw_showings,
+      [%{}, %{}, %{}],
+      fn venue, [venues, films, showings] ->
+        v = %{venue | "films" => nil}
+
+        venue_id = v["venue_id"]
+        film_id = hd(Map.keys(venue["films"]))
+
+        f = get_in(venue, ["films", film_id, "film_data"])
+
+        s =
+          get_in(venue, ["films", film_id, "showings"])
+          |> Enum.map(&Map.merge(&1, %{"film_id" => film_id, "venue_id" => venue_id}))
+
+        [
+          if(v, do: Map.put(venues, venue_id, v), else: venues),
+          if(f, do: Map.put(films, film_id, f), else: films),
+          Map.put(showings, {film_id, venue_id}, s)
+        ]
+      end
+    )
+  end
+
+  defp present_results(venues, films, showings) do
+    Enum.map(films, fn {film_id, film} ->
+      film_venues =
+        venues
+        |> Enum.map(fn {venue_id, venue} ->
+          ss = showings[{film_id, venue_id}]
+
+          unless ss do
+            nil
+          else
+            Map.put(
+              Map.take(venue, ["name", "distance", "lat", "lon", "website"]),
+              "times",
+              Enum.map(ss, fn s -> Map.take(s, ["showtime", "ticketing_link"]) end)
+            )
+          end
+        end)
+        |> Enum.filter(& &1)
+
+      Map.put(film, "venues", film_venues)
+    end)
+  end
+
+  defp http_fetch(uri) do
     %HTTPoison.Response{body: body} =
       HTTPoison.get!(uri, [], timeout: 15_000, recv_timeout: 15_000)
 
