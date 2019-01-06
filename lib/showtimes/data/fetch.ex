@@ -7,6 +7,8 @@ defmodule Showtimes.Data.Fetch do
 
   # FindAnyFilm
 
+  This is the one implemented at the moment
+
   1. Find films in London
   > https://www.findanyfilm.com/find-cinema-tickets?townpostcode=WC2N5DX
 
@@ -18,6 +20,8 @@ defmodule Showtimes.Data.Fetch do
   > https://www.findanyfilm.com/api/screenings/by_film_id/film_id/162633/date_from/2019-01-03/townpostcode/WC2N5DX
   When we do more days:
   > https://www.findanyfilm.com/api/screenings/by_film_id/film_id/162633/date_from/2019-01-03/date_to/2019-01-06/townpostcode/WC2N5DX
+
+  4. Aggregate the data into a presentable form
 
   # London Net...?
 
@@ -46,12 +50,9 @@ defmodule Showtimes.Data.Fetch do
 
     raw_showings = films |> pflat_map(&find_showings(&1["film_id"], today))
 
-    Logger.info("Aggregating data...")
-
-    [venues, films, showings] = index_venues_films_showings(raw_showings)
-
     Logger.info("Done.")
-    present_results(venues, films, showings)
+
+    index_venues_films_showings(raw_showings)
   end
 
   defp pflat_map(list, func) do
@@ -119,29 +120,7 @@ defmodule Showtimes.Data.Fetch do
         ]
       end
     )
-  end
-
-  defp present_results(venues, films, showings) do
-    Enum.map(films, fn {film_id, film} ->
-      film_venues =
-        venues
-        |> Enum.map(fn {venue_id, venue} ->
-          ss = showings[{film_id, venue_id}]
-
-          unless ss do
-            nil
-          else
-            Map.put(
-              Map.take(venue, ["name", "distance", "lat", "lon", "website"]),
-              "times",
-              Enum.map(ss, fn s -> Map.take(s, ["showtime", "ticketing_link"]) end)
-            )
-          end
-        end)
-        |> Enum.filter(& &1)
-
-      Map.put(film, "venues", film_venues)
-    end)
+    |> List.to_tuple()
   end
 
   defp http_fetch(uri) do
